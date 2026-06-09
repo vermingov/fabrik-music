@@ -1,0 +1,64 @@
+services:
+  fabrik:
+    build: .
+    container_name: fabrik-music
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - ./storage:/app/storage
+    environment:
+      - NODE_ENV=production
+    networks:
+      - fabrik-net
+
+  nodelink:
+    image: ghcr.io/nodelinkorg/nodelink:latest
+    container_name: fabrik-nodelink
+    restart: unless-stopped
+    environment:
+      - SERVER_PORT=2333
+      - SERVER_PASSWORD=youshallnotpass
+    networks:
+      - fabrik-net
+
+  db:
+    image: mysql:8
+    container_name: fabrik-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: fabrik
+      MYSQL_USER: fabrik
+      MYSQL_PASSWORD: fabrik
+    volumes:
+      - fabrik-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - fabrik-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: fabrik-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - fabrik-net
+
+volumes:
+  fabrik-db:
+
+networks:
+  fabrik-net:
